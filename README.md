@@ -27,7 +27,7 @@ AshAI Server is a FastAPI-based backend that provides AI inference through a RES
 Clone the repository
 
 ```bash
-git clone https://github.com/<your-username>/ashai-server.git
+git clone https://github.com/ashwin-naik18/ashai-server.git
 cd ashai-server
 ```
 
@@ -88,6 +88,3 @@ ashai-server/
 └── README.md
 ```
 
-## License
-
-This project is licensed under the MIT License.
