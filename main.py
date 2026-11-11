@@ -3,6 +3,7 @@ from model import User, APIKey, ChatRequest, UsageLog
 from database import Base, engine, session_local
 from scheme import userCreate, userLogin
 from security import *
+from rate_limiter import check_rate_limit as redis_check_rate_limit
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from langchain_ollama import ChatOllama
 
@@ -13,7 +14,7 @@ app = FastAPI()
 
 
 ALLOWED_MODELS = [
-    "llama3.1:8b",
+    "llama3.1:latest",
     "qwen2.5-coder:14b"
 ]
 
@@ -257,19 +258,28 @@ def chat(
     request : ChatRequest,
     response = Depends(api_user)
 ):
+    db = None
     try:
+        if request.model not in ALLOWED_MODELS:
+            raise HTTPException(
+                status_code=400,
+                detail="Bad Request"
+            )
+            
         user = response[0]
-        api_key = response[1]
+        api_key_id = response[1]
         
         db = session_local()
         
-        if check_rate_limit(api_key):
-            
-            if request.model not in ALLOWED_MODELS:
-                raise HTTPException(
-                    status_code=400,
-                    detail="Bad Request"
-                )
+        result = redis_check_rate_limit(api_key_id)
+        
+        if not result["allowed"]:
+            raise HTTPException(
+                status_code=429,
+                detail="Too mant request. Daily API request limit exceeded."
+            )
+        
+        if result['allowed']:
             
             llm = ChatOllama(model=request.model)
             
@@ -280,7 +290,7 @@ def chat(
             
             new_row = UsageLog(
                 user_id = user.id,
-                api_key_id = api_key,
+                api_key_id = api_key_id,
                 request = request.message,
                 response = res
             )
@@ -311,7 +321,8 @@ def chat(
         
     
     finally : 
-        db.close()
+        if db is not None:
+            db.close()
         
         
 @app.get("/usage")

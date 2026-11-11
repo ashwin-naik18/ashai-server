@@ -1,32 +1,26 @@
-from redis_client import redis_url, redis_client, check_redis
-import redis
+from concurrent.futures import ThreadPoolExecutor
 
-try:
-    print("Redis Connection : ", check_redis())
+from rate_limiter import check_rate_limit, build_rate_limit_key
+from redis_client import redis_client
+
+api_key_id = 999002
+total_requests = 20
+
+# key, _ = build_rate_limit_key(api_key_id)
+
+# redis_client.delete(key)
+
+from concurrent.futures import ThreadPoolExecutor
+
+# with ThreadPoolExecutor(max_workers=10) as executor:
+#     results = list(executor.map(check_rate_limit, [api_key_id] * total_requests))
     
-    redis_client.set(
-        "ashai:learning:project",
-        "AshAI-Server",
-        ex=60
-    )
-    
-    value = redis_client.get("ashai:learning:project")
-    
-    print("Sorted Values : ", value)
-    
-    redis_client.incr("ashai:learning:counter")
-    
-    counter = redis_client.get("ashai:learning:counter")
-    
-    print("Counter: ", counter)
-    
-    redis_client.delete(
-        "ashai:learning:project",
-        "ashai:learning:counter"
-    )
-    
-except redis.exceptions.RedisError as e:
-    print(e)
-    
-finally:
-    redis_client.close()
+# allowed = sum(1 for r in results if r['allowed'])
+# rejected = sum(1 for r in results if not r['allowed'])
+
+# print(allowed)
+# print(rejected)
+
+result = check_rate_limit(api_key_id)
+
+print(result)

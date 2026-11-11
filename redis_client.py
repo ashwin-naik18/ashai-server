@@ -14,6 +14,5 @@ redis_client = redis.Redis.from_url(
 def check_redis():
     return redis_client.ping()
 
-print(check_redis())
 
 # REAL 
