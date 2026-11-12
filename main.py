@@ -292,7 +292,7 @@ def chat(
                 user_id = user.id,
                 api_key_id = api_key_id,
                 request = request.message,
-                response = res
+                response = res.content
             )
             
             db.add(new_row)
