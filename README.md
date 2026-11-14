@@ -590,31 +590,3 @@ The Redis client also configures response decoding, connection timeout, socket t
 ### Allowed models
 
 The model allow-list is maintained in `main.py` in `ALLOWED_MODELS`. To enable another model, add its exact Ollama model name to the list and make sure that model is installed and available to Ollama.
-
-## Security and operational notes
-
-This repository is a learning and development project with production-inspired design elements. It should not be considered production-hardened without further work.
-
-Before deploying it publicly:
-
-- Move the JWT `SECRET_KEY` out of source code and load a strong secret from a protected environment variable or secrets manager.
-- Do not commit real API keys, passwords, access tokens, database files, or environment files.
-- Review API-key storage and retrieval. The current API-key listing route returns key values, so restrict access carefully and consider showing secrets only once at creation time.
-- Keep Redis on a private network. The local Docker command binds Redis to `127.0.0.1`; do not change this to a public interface without authentication, network controls, and TLS where appropriate.
-- Add a persistent Redis volume or use a managed Redis service if rate-limit counters must survive container recreation or host failure. The current local Docker command does not configure a dedicated persistent volume for Redis data.
-- Use a production ASGI process configuration instead of `uvicorn --reload`.
-- Review database session management, logging, request validation, rate-limit policy, and error handling before public deployment.
-- Consider removing or restricting the `/test` route because it echoes the supplied API-key header.
-
-## Known limitations and future improvements
-
-- SQLite is currently used for persistent storage; a client/server database may be more appropriate as concurrent usage grows.
-- Redis currently provides rate limiting; response caching and background task queues are not implemented by this feature.
-- The current setup starts Redis with `docker run`; Docker Compose for managing the API and Redis together is a future improvement.
-- The current rate-limit policy is a fixed daily quota per API key. Per-plan quotas, per-minute burst limits, and configurable reset policies could be added later.
-- The concurrency test covers multiple threads against one Redis service. Multi-instance deployment, failover, Redis persistence, and load testing still require dedicated validation.
-- The existing chat response format is retained for compatibility with the current AshAI SDK. Any response-schema changes should be versioned and coordinated with the SDK.
-
-## License
-
-No license is currently specified in this repository. Add a `LICENSE` file before publishing the project for reuse by others.
