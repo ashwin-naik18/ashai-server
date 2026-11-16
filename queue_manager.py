@@ -2,7 +2,7 @@ import uuid
 from redis_client import redis_client
 
 STREAM_NAME = "ashai:inference:stream"
-from worker import GROUP_NAME
+GROUP_NAME =  "ashai-workers"
 
 RESULT_TTL = 3600
 
@@ -22,6 +22,7 @@ def enqueue_job(message, model, user_id, api_key_id):
     
     return job_id
 
+
 def store_result(job_id, response):
     key = f"ashai:inference:result:{job_id}"
     
@@ -37,4 +38,4 @@ def acknowledge_job(stream_id):
         stream_id
     )
     
-    return result
+    return result   

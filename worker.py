@@ -5,6 +5,13 @@ from langchain_ollama import ChatOllama
 from redis_client import redis_client
 from redis.exceptions import ResponseError
 
+from queue_manager import store_result, acknowledge_job 
+
+import logging
+
+logger = logging.getLogger(__name__)
+
+
 STREAM_NAME = "ashai:inference:stream"
 GROUP_NAME =  "ashai-workers"
 
@@ -58,3 +65,77 @@ def process_job(job_data):
     response = llm.invoke(message)
     
     return response.content
+
+
+def process_one_request():
+    
+    ensure_consumer_group()
+    
+    job = consume_one_job()
+    
+    if job is None:
+        return False
+    
+    try:
+    
+        stream_id, job_data = job
+        
+        response = process_job(job_data)
+        job_id = job_data['job_id']
+        
+        status = store_result(job_id, response)
+        
+        if not status:
+            raise RuntimeError(
+                f"Failed to store result for job_id = {job_id}"
+            )
+        
+        acknowledgement_status = acknowledge_job(stream_id)
+
+        if not acknowledgement_status:
+            raise RuntimeError(
+                f"Failed to acknowledge job_id = {job_id}"
+            )
+            
+        logger.info(
+            "Successfully processed job_id = %s",
+            job_id  
+        )
+        
+        return True
+    
+    except Exception :
+        logger.exception(
+            "Failed processing job_id = %s",
+            job_id
+        )
+        
+        raise   
+    
+
+def worker_loop():
+    logger.info("Worker %s started", CONSUMER_NAME)
+    
+    try:
+        while True:
+            try:
+                process_one_request()
+                
+            except KeyboardInterrupt:
+                logger.info("Worker %s stopping...", CONSUMER_NAME)
+                break
+            
+            except Exception:
+                logger.exception(
+                    "Worker %s encountered an error",
+                    CONSUMER_NAME
+                )
+                
+                
+    finally:
+        logger.info("Worker %s stopped..", CONSUMER_NAME) 
+        
+        
+if __name__ == "__main__":
+    worker_loop()           
+    
