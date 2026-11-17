@@ -1,0 +1,18 @@
+﻿services:
+  worker:
+    image: ashai-worker:v1
+    build:
+      context: .
+    restart: unless-stopped
+
+    environment:
+      REDIS_URL: redis://ashai-server:6379/0
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+
+    networks:
+      - ashai-network
+
+networks:
+  ashai-network:
+    external: true
+    name: ashai-network

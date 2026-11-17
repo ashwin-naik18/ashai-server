@@ -1,6 +1,7 @@
 import os
 import socket 
 from langchain_ollama import ChatOllama
+import uuid
 
 from redis_client import redis_client
 from redis.exceptions import ResponseError
@@ -11,11 +12,11 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-
+OLLAMA_BASE_URL = "http://localhost:11434"
 STREAM_NAME = "ashai:inference:stream"
 GROUP_NAME =  "ashai-workers"
 
-CONSUMER_NAME = socket.gethostname()
+CONSUMER_NAME = f"{socket.gethostname()}-{uuid.uuid4().hex[:8]}"
 
 BLOCK_MS = 5000
 
@@ -57,13 +58,20 @@ def consume_one_job():
     
     return stream_id, job_data
 
+
 def process_job(job_data):
-    llm = ChatOllama(model=job_data["model"])
-    
-    message = job_data['message']
-    
+    llm = ChatOllama(
+        model=job_data["model"],
+        base_url=os.getenv(
+            "OLLAMA_BASE_URL",
+            "http://localhost:11434"
+        )
+    )
+
+    message = job_data["message"]
+
     response = llm.invoke(message)
-    
+
     return response.content
 
 
@@ -76,12 +84,13 @@ def process_one_request():
     if job is None:
         return False
     
+    stream_id, job_data = job
+    
+    response = process_job(job_data)
+    job_id = job_data['job_id']
+    
     try:
     
-        stream_id, job_data = job
-        
-        response = process_job(job_data)
-        job_id = job_data['job_id']
         
         status = store_result(job_id, response)
         
