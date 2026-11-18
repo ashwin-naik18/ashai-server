@@ -5,7 +5,7 @@ from scheme import userCreate, userLogin
 from security import *
 from rate_limiter import check_rate_limit as redis_check_rate_limit
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from langchain_ollama import ChatOllama
+from queue_manager import enqueue_job, wait_for_result
 
 
 Base.metadata.create_all(bind=engine)
@@ -15,7 +15,8 @@ app = FastAPI()
 
 ALLOWED_MODELS = [
     "llama3.1:latest",
-    "qwen2.5-coder:14b"
+    "qwen2.5-coder:14b",
+    "qwen3:1.7b"
 ]
 
 
@@ -279,34 +280,36 @@ def chat(
                 detail="Too mant request. Daily API request limit exceeded."
             )
         
-        if result['allowed']:
-            
-            llm = ChatOllama(model=request.model)
-            
-            content = request.message
-            
-            res = llm.invoke(content)
-            
-            
-            new_row = UsageLog(
-                user_id = user.id,
-                api_key_id = api_key_id,
-                request = request.message,
-                response = res.content
+        job_id = enqueue_job(request, request.model, user.user_id, api_key_id)
+        
+        inference_result = wait_for_result(job_id)
+        
+        if inference_result is None:
+            raise HTTPException(
+                status_code=504,
+                detail="Inference request timed out."
             )
-            
-            db.add(new_row)
-            
-            db.commit()
-            
-            db.refresh(new_row)
-            
-            return{
-                "request" : str(request.message),
-                "response" : str(res),
-                "user_id" : user.id,
-                "status_code" : 200
-            }
+        
+        
+        new_row = UsageLog(
+            user_id = user.id,
+            api_key_id = api_key_id,
+            request = request.message,
+            response = inference_result
+        )
+        
+        db.add(new_row)
+        
+        db.commit()
+        
+        db.refresh(new_row)
+        
+        return{
+            "request" : str(request.message),
+            "response" : str(inference_result),
+            "user_id" : user.id,
+            "status_code" : 200
+        }
             
     except HTTPException:
         raise

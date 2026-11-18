@@ -20,6 +20,12 @@ CONSUMER_NAME = f"{socket.gethostname()}-{uuid.uuid4().hex[:8]}"
 
 BLOCK_MS = 5000
 
+    
+PENDING_MIN_IDLE_MS = 120000
+CLAIM_COUNT = 1
+
+claim_cursor = "0-0"
+
 
 def ensure_consumer_group():
     try:
