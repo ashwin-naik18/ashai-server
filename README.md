@@ -590,3 +590,4 @@ The Redis client also configures response decoding, connection timeout, socket t
 ### Allowed models
 
 The model allow-list is maintained in `main.py` in `ALLOWED_MODELS`. To enable another model, add its exact Ollama model name to the list and make sure that model is installed and available to Ollama.
+Ex: qwen3:1.7b, llama3.1:8b
